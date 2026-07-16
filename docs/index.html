@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>串口管理工具 - 多串口调试助手</title>
+    <meta
+      name="description"
+      content="串口管理工具用于 Windows 多串口调试场景，支持串口实时扫描、插拔通知、自定义命名、分组管理和正则搜索。"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f5efe1;
+        --surface: #fffaf0;
+        --surface-strong: #fffdf7;
+        --ink: #071421;
+        --muted: #5d6670;
+        --line: #ddceb4;
+        --teal: #0f8f8d;
+        --teal-soft: #dff3ed;
+        --green: #1aa45f;
+        --red: #d64235;
+        --amber: #c87900;
+        --shadow: 0 20px 60px rgba(22, 34, 45, 0.13);
+        --radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(216, 188, 119, 0.28), transparent 30%),
+          linear-gradient(120deg, #f3e8ce 0%, #fbf7ee 48%, #edf5ed 100%);
+        color: var(--ink);
+        font-family:
+          "Inter", "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .page-shell {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid rgba(221, 206, 180, 0.8);
+        background: rgba(250, 246, 236, 0.88);
+        backdrop-filter: blur(16px);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 68px;
+        gap: 18px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 8px;
+        background: #071421;
+        color: #ffd166;
+        font-weight: 800;
+      }
+
+      .brand-text {
+        min-width: 0;
+      }
+
+      .brand-text strong {
+        display: block;
+        font-size: 16px;
+      }
+
+      .brand-text span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 38px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 14px;
+        background: var(--surface-strong);
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 8px 20px rgba(17, 24, 39, 0.06);
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(15, 143, 141, 0.45);
+      }
+
+      .button.primary {
+        border-color: #071421;
+        background: #071421;
+        color: #fff;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+        align-items: center;
+        min-height: calc(100vh - 68px);
+        gap: 44px;
+        padding: 58px 0 46px;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: #bd7200;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 620px;
+        font-size: clamp(42px, 6vw, 78px);
+        line-height: 1.02;
+      }
+
+      .lead {
+        margin: 22px 0 0;
+        max-width: 610px;
+        color: #34404a;
+        font-size: 19px;
+        line-height: 1.8;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 30px;
+      }
+
+      .hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 34px;
+        max-width: 580px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px;
+        background: rgba(255, 253, 247, 0.82);
+      }
+
+      .metric b {
+        display: block;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .preview-frame {
+        position: relative;
+      }
+
+      .app-shot {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .app-shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .signal-panel {
+        position: absolute;
+        right: -14px;
+        bottom: 26px;
+        width: min(310px, 72%);
+        border: 1px solid rgba(15, 143, 141, 0.22);
+        border-radius: 8px;
+        padding: 14px;
+        background: rgba(255, 253, 247, 0.94);
+        box-shadow: 0 18px 44px rgba(17, 24, 39, 0.16);
+      }
+
+      .signal-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
+      }
+
+      .signal-row + .signal-row {
+        border-top: 1px solid rgba(221, 206, 180, 0.7);
+      }
+
+      .event-dot {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 50%;
+        color: #fff;
+        font-weight: 900;
+      }
+
+      .event-dot.plus {
+        background: var(--green);
+      }
+
+      .event-dot.minus {
+        background: var(--red);
+      }
+
+      .signal-row strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .signal-row span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .section {
+        padding: 72px 0;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 44px);
+      }
+
+      .section-heading p {
+        margin: 0;
+        max-width: 520px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .feature {
+        min-height: 190px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px;
+        background: rgba(255, 253, 247, 0.84);
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease;
+      }
+
+      .feature:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 34px rgba(17, 24, 39, 0.1);
+      }
+
+      .feature-number {
+        color: var(--teal);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .feature h3 {
+        margin: 18px 0 10px;
+        font-size: 20px;
+      }
+
+      .feature p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .demo-shell {
+        display: grid;
+        grid-template-columns: 210px minmax(0, 1fr) 310px;
+        gap: 18px;
+        min-height: 560px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px;
+        background: rgba(255, 253, 247, 0.88);
+        box-shadow: var(--shadow);
+      }
+
+      .demo-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .demo-title h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid #b7dfc7;
+        border-radius: 999px;
+        padding: 6px 11px;
+        background: #e9f8ef;
+        color: #08764a;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .status-pill::before {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        content: "";
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .group-tab,
+      .control-button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        background: var(--surface-strong);
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+      }
+
+      .group-tab {
+        position: relative;
+        gap: 10px;
+      }
+
+      .group-tab.active {
+        border-color: rgba(15, 143, 141, 0.48);
+        background: var(--teal-soft);
+      }
+
+      .group-tab::before {
+        width: 10px;
+        height: 10px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--tab-color, #7a807b);
+        content: "";
+      }
+
+      .group-name {
+        overflow: hidden;
+        min-width: 0;
+        flex: 1;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .count {
+        display: inline-flex;
+        min-width: 24px;
+        height: 24px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #fff;
+        color: var(--teal);
+        font-size: 13px;
+      }
+
+      .list-panel {
+        min-width: 0;
+      }
+
+      .search-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .search-row input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 14px;
+        background: #fffdf8;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      .ports {
+        display: grid;
+        gap: 10px;
+      }
+
+      .port-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: 78px minmax(88px, 140px) minmax(160px, 1fr) 116px;
+        align-items: center;
+        gap: 12px;
+        min-height: 80px;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--teal);
+        border-radius: 8px;
+        padding: 14px 18px 14px 14px;
+        background: rgba(255, 250, 240, 0.98);
+        animation: liftIn 260ms ease both;
+      }
+
+      .port-card.hidden {
+        display: none;
+      }
+
+      .port-code {
+        display: inline-flex;
+        width: max-content;
+        max-width: 78px;
+        align-items: center;
+        border-radius: 7px;
+        padding: 6px 10px;
+        background: #dcf2eb;
+        color: #00535f;
+        font-weight: 900;
+      }
+
+      .alias {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .device {
+        overflow: hidden;
+        color: #34404a;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .meta {
+        display: flex;
+        gap: 10px;
+        grid-column: 1 / -1;
+        min-width: 0;
+        color: #34404a;
+        font-size: 13px;
+      }
+
+      .meta span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .open-state {
+        display: inline-flex;
+        width: max-content;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        background: #e8f6ea;
+        color: #08764a;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .open-state.busy {
+        background: #fae7df;
+        color: #ad2d24;
+      }
+
+      .online-dot {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 6px rgba(26, 164, 95, 0.12);
+      }
+
+      .events-panel {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+      }
+
+      .event-list {
+        display: grid;
+        gap: 10px;
+        overflow: auto;
+        max-height: 458px;
+        padding-right: 5px;
+      }
+
+      .event-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 70px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fffaf0;
+        animation: eventIn 320ms ease both;
+      }
+
+      .event-card strong {
+        display: block;
+      }
+
+      .event-card span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .demo-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: auto;
+        padding-top: 16px;
+      }
+
+      .control-button {
+        justify-content: center;
+        color: var(--teal);
+      }
+
+      .workflow {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 24px;
+        background: rgba(255, 253, 247, 0.86);
+      }
+
+      .step b {
+        display: inline-flex;
+        min-width: 34px;
+        height: 34px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #071421;
+        color: #fff;
+      }
+
+      .step h3 {
+        margin: 18px 0 10px;
+      }
+
+      .step p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .site-footer {
+        padding: 34px 0 46px;
+        border-top: 1px solid rgba(221, 206, 180, 0.8);
+        color: var(--muted);
+      }
+
+      @keyframes eventIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes liftIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 1080px) {
+        .hero,
+        .demo-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .signal-panel {
+          right: 18px;
+        }
+
+        .feature-grid,
+        .workflow {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .demo-shell {
+          min-height: auto;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page-shell {
+          width: min(100% - 24px, 1180px);
+        }
+
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 12px 0;
+        }
+
+        .hero {
+          min-height: auto;
+          padding-top: 42px;
+        }
+
+        .hero-metrics,
+        .feature-grid,
+        .workflow {
+          grid-template-columns: 1fr;
+        }
+
+        .section-heading {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .signal-panel {
+          position: static;
+          width: 100%;
+          margin-top: 12px;
+        }
+
+        .demo-shell {
+          padding: 14px;
+        }
+
+        .port-card {
+          grid-template-columns: 74px minmax(0, 1fr);
+        }
+
+        .device,
+        .open-state {
+          grid-column: 1 / -1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="page-shell nav" aria-label="主导航">
+        <a class="brand" href="#top" aria-label="返回顶部">
+          <span class="brand-mark">COM</span>
+          <span class="brand-text">
+            <strong>串口管理工具</strong>
+            <span>Serial Port Manager</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="button" href="#demo">交互演示</a>
+          <a class="button primary" href="https://github.com/wangjingping-88/serial-manager/releases/tag/v0.1.0">下载安装</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="page-shell hero">
+        <div>
+          <p class="eyebrow">Windows 串口调试助手</p>
+          <h1>Hub 上一排串口，刚接入的是哪一个？</h1>
+          <p class="lead">
+            串口管理工具面向嵌入式调试、设备测试和多 USB 串口场景。它会实时扫描串口列表，
+            在后台记录插拔事件，并通过自定义名称和分组颜色帮你快速定位设备。
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#demo">查看动态演示</a>
+            <a class="button" href="https://github.com/wangjingping-88/serial-manager">打开 GitHub 仓库</a>
+          </div>
+          <div class="hero-metrics" aria-label="关键能力">
+            <div class="metric">
+              <b data-count="6">6</b>
+              <span>当前串口集中管理</span>
+            </div>
+            <div class="metric">
+              <b data-count="80">80</b>
+              <span>最近事件保留上限</span>
+            </div>
+            <div class="metric">
+              <b data-count="0">0</b>
+              <span>后台监听额外操作</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-frame" aria-label="软件界面预览">
+          <figure class="app-shot">
+            <img src="assets/app-preview.png" alt="串口管理工具主界面，展示串口列表、分组和最近事件" />
+          </figure>
+          <div class="signal-panel" aria-label="插拔事件示例">
+            <div class="signal-row">
+              <span class="event-dot plus">+</span>
+              <div>
+                <strong>网关 AP (COM7)</strong>
+                <span>插入 · 后台通知</span>
+              </div>
+            </div>
+            <div class="signal-row">
+              <span class="event-dot minus">-</span>
+              <div>
+                <strong>R4 (COM8)</strong>
+                <span>拔出 · 事件记录</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-shell section" id="features">
+        <div class="section-heading">
+          <h2>为多串口痛点做减法</h2>
+          <p>重点不是替代串口终端，而是让你在大量 COM 口之间快速知道“哪个设备发生了变化”。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature">
+            <span class="feature-number">01</span>
+            <h3>实时监听</h3>
+            <p>打开即扫描串口，列表和统计信息自动刷新，前台查看时不弹系统通知。</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">02</span>
+            <h3>后台通知</h3>
+            <p>最小化到托盘后持续工作，插入和拔出事件会通过系统通知提示具体串口。</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">03</span>
+            <h3>命名和分组</h3>
+            <p>为串口保存自定义名称，按 Hub、设备用途或测试环境分组，并用颜色区分。</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">04</span>
+            <h3>快速搜索</h3>
+            <p>支持按 COM、名称、厂商、服务和分组搜索，也支持正则表达式过滤。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="page-shell section" id="demo">
+        <div class="section-heading">
+          <h2>浏览器里的动态演示</h2>
+          <p>下面是一个轻量交互模拟：切换分组、搜索串口、触发插拔事件，感受实际使用节奏。</p>
+        </div>
+
+        <div class="demo-shell">
+          <aside class="sidebar" aria-label="分组筛选">
+            <button class="control-button" id="add-event" type="button">模拟插入</button>
+            <button class="group-tab active" data-group="all" style="--tab-color: #7a807b" type="button">
+              <span class="group-name">全部</span>
+              <span class="count" data-count-for="all">6</span>
+            </button>
+            <button class="group-tab" data-group="ungrouped" style="--tab-color: #7a807b" type="button">
+              <span class="group-name">未分组</span>
+              <span class="count" data-count-for="ungrouped">1</span>
+            </button>
+            <button class="group-tab" data-group="mesh" style="--tab-color: #0f8f8d" type="button" title="Mesh">
+              <span class="group-name">Mesh</span>
+              <span class="count" data-count-for="mesh">4</span>
+            </button>
+            <button class="group-tab" data-group="ap" style="--tab-color: #1aa45f" type="button" title="AP">
+              <span class="group-name">AP</span>
+              <span class="count" data-count-for="ap">1</span>
+            </button>
+          </aside>
+
+          <section class="list-panel" aria-label="串口列表">
+            <div class="demo-title">
+              <h3>串口列表</h3>
+              <span class="status-pill">监听中</span>
+            </div>
+            <div class="search-row">
+              <input id="port-search" type="search" placeholder="搜索 COM、名称、厂商、服务、分组，正则用 /.../i" />
+            </div>
+            <div class="ports" id="ports"></div>
+          </section>
+
+          <section class="events-panel" aria-label="最近事件">
+            <div class="demo-title">
+              <h3>最近事件</h3>
+              <span id="clock" class="status-pill">--:--:--</span>
+            </div>
+            <div class="event-list" id="events"></div>
+            <div class="demo-actions">
+              <button class="control-button" id="remove-event" type="button">模拟拔出</button>
+              <button class="control-button" id="clear-events" type="button">清空事件</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page-shell section">
+        <div class="section-heading">
+          <h2>典型使用方式</h2>
+          <p>适合日常调试，不需要改变你现有的串口终端或自动化脚本。</p>
+        </div>
+        <div class="workflow">
+          <article class="step">
+            <b>1</b>
+            <h3>插上设备</h3>
+            <p>软件自动发现串口，展示 COM 号、厂商、服务和是否被占用。</p>
+          </article>
+          <article class="step">
+            <b>2</b>
+            <h3>命名分组</h3>
+            <p>把“COM13”改成“中心”或“网关 AP”，并归入 Mesh、AP 或自定义分组。</p>
+          </article>
+          <article class="step">
+            <b>3</b>
+            <h3>后台监听</h3>
+            <p>窗口不在前台时只保留托盘，插拔事件通过通知和最近事件列表留痕。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="page-shell">
+        <p>
+          串口管理工具是一个开源 Windows 桌面工具。
+          <a href="https://github.com/wangjingping-88/serial-manager">查看源码</a>
+          ·
+          <a href="https://github.com/wangjingping-88/serial-manager/releases/tag/v0.1.0">下载 v0.1.0</a>
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      const ports = [
+        { code: "COM13", alias: "中心", device: "USB-SERIAL CH340 (COM13)", vendor: "wch.cn", service: "CH341SER_A64", group: "mesh", open: false },
+        { code: "COM10", alias: "R1", device: "USB-SERIAL CH340 (COM10)", vendor: "wch.cn", service: "CH341SER_A64", group: "mesh", open: false },
+        { code: "COM11", alias: "R2", device: "USB-SERIAL CH340 (COM11)", vendor: "wch.cn", service: "CH341SER_A64", group: "mesh", open: true },
+        { code: "COM9", alias: "R3", device: "USB-SERIAL CH340 (COM9)", vendor: "wch.cn", service: "CH341SER_A64", group: "mesh", open: false },
+        { code: "COM7", alias: "网关 AP", device: "USB-SERIAL CH340 (COM7)", vendor: "wch.cn", service: "CH341SER_A64", group: "ap", open: false },
+        { code: "COM6", alias: "未命名", device: "USB Serial Port (COM6)", vendor: "FTDI", service: "FTSER2K", group: "ungrouped", open: true }
+      ];
+
+      const groups = {
+        all: "全部",
+        ungrouped: "未分组",
+        mesh: "Mesh",
+        ap: "AP"
+      };
+
+      const eventNames = ["中心 (COM13)", "R1 (COM10)", "R2 (COM11)", "网关 AP (COM7)", "COM6"];
+      let activeGroup = "all";
+      let eventIndex = 0;
+      let events = [
+        { type: "in", name: "网关 AP (COM7)", time: "14:24:59" },
+        { type: "out", name: "R4 (COM8)", time: "14:24:52" }
+      ];
+
+      const portsEl = document.querySelector("#ports");
+      const eventsEl = document.querySelector("#events");
+      const searchEl = document.querySelector("#port-search");
+
+      function getSearchMatcher(value) {
+        const trimmed = value.trim();
+        if (!trimmed) return () => true;
+        if (trimmed.startsWith("/") && trimmed.lastIndexOf("/") > 0) {
+          const end = trimmed.lastIndexOf("/");
+          const source = trimmed.slice(1, end);
+          const flags = trimmed.slice(end + 1);
+          try {
+            const re = new RegExp(source, flags);
+            return (text) => re.test(text);
+          } catch {
+            return () => false;
+          }
+        }
+        const lower = trimmed.toLowerCase();
+        return (text) => text.toLowerCase().includes(lower);
+      }
+
+      function renderCounts() {
+        const counts = {
+          all: ports.length,
+          ungrouped: ports.filter((port) => port.group === "ungrouped").length,
+          mesh: ports.filter((port) => port.group === "mesh").length,
+          ap: ports.filter((port) => port.group === "ap").length
+        };
+        Object.entries(counts).forEach(([key, value]) => {
+          const node = document.querySelector(`[data-count-for="${key}"]`);
+          if (node) node.textContent = value;
+        });
+      }
+
+      function renderPorts() {
+        const matcher = getSearchMatcher(searchEl.value);
+        const filtered = ports.filter((port) => {
+          const groupMatched = activeGroup === "all" || port.group === activeGroup;
+          const text = `${port.code} ${port.alias} ${port.device} ${port.vendor} ${port.service} ${groups[port.group]}`;
+          return groupMatched && matcher(text);
+        });
+
+        portsEl.innerHTML = filtered
+          .map(
+            (port) => `
+              <article class="port-card">
+                <span class="online-dot" aria-hidden="true"></span>
+                <span class="port-code">${port.code}</span>
+                <strong class="alias" title="${port.alias}">${port.alias}</strong>
+                <span class="device" title="${port.device}">${port.device}</span>
+                <span class="open-state ${port.open ? "busy" : ""}">${port.open ? "已打开" : "未打开"}</span>
+                <div class="meta">
+                  <span title="${port.vendor}">厂商 <b>${port.vendor}</b></span>
+                  <span title="${port.service}">服务 <b>${port.service}</b></span>
+                  <span>分组 <b>${groups[port.group]}</b></span>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        if (!filtered.length) {
+          portsEl.innerHTML = '<p class="metric">未发现匹配串口，试试 /COM(7|10)/i。</p>';
+        }
+      }
+
+      function renderEvents() {
+        eventsEl.innerHTML = events
+          .slice(0, 8)
+          .map(
+            (event) => `
+              <article class="event-card">
+                <span class="event-dot ${event.type === "in" ? "plus" : "minus"}">${event.type === "in" ? "+" : "-"}</span>
+                <div>
+                  <strong>${event.name}</strong>
+                  <span>${event.type === "in" ? "插入" : "拔出"} · ${event.time}</span>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        if (!events.length) {
+          eventsEl.innerHTML = '<p class="metric">暂无插拔事件，点击左侧按钮模拟一次。</p>';
+        }
+      }
+
+      function now() {
+        return new Date().toLocaleTimeString("zh-CN", { hour12: false });
+      }
+
+      function pushEvent(type) {
+        const name = eventNames[eventIndex % eventNames.length];
+        eventIndex += 1;
+        events = [{ type, name, time: now() }, ...events].slice(0, 80);
+        renderEvents();
+      }
+
+      document.querySelectorAll(".group-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          activeGroup = tab.dataset.group;
+          document.querySelectorAll(".group-tab").forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          renderPorts();
+        });
+      });
+
+      document.querySelector("#add-event").addEventListener("click", () => pushEvent("in"));
+      document.querySelector("#remove-event").addEventListener("click", () => pushEvent("out"));
+      document.querySelector("#clear-events").addEventListener("click", () => {
+        events = [];
+        renderEvents();
+      });
+      searchEl.addEventListener("input", renderPorts);
+
+      setInterval(() => {
+        document.querySelector("#clock").textContent = now();
+      }, 1000);
+
+      renderCounts();
+      renderPorts();
+      renderEvents();
+      document.querySelector("#clock").textContent = now();
+    </script>
+  </body>
+</html>

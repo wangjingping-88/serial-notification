@@ -2,6 +2,10 @@
 
 一个面向 Windows 的串口管理和插拔通知工具。打开后可以查看当前所有串口信息，支持自定义名称和自定义分组；最小化或关闭窗口后保留在系统托盘；检测到串口插入或拔出时，会通过系统通知提示具体串口。适合一个 USB Hub 上挂载多个串口设备时快速区分。
 
+## 在线介绍页
+
+[打开动态 Web 介绍页](https://wangjingping-88.github.io/serial-manager/)
+
 ## 界面预览
 
 ![串口管理工具主界面](assets/readme/main-window.png)
