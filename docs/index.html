@@ -80,14 +80,47 @@
       }
 
       .brand-mark {
-        display: grid;
+        position: relative;
+        display: inline-flex;
+        flex: 0 0 auto;
         width: 34px;
         height: 34px;
-        place-items: center;
+        align-items: center;
+        justify-content: center;
         border-radius: 8px;
         background: #071421;
-        color: #ffd166;
-        font-weight: 800;
+        box-shadow: 0 8px 20px rgba(7, 20, 33, 0.14);
+      }
+
+      .brand-glyph {
+        position: relative;
+        width: 17px;
+        height: 14px;
+        border: 2px solid #fff8df;
+        border-radius: 4px;
+      }
+
+      .brand-glyph::before {
+        position: absolute;
+        top: -7px;
+        left: 2px;
+        width: 3px;
+        height: 7px;
+        border-radius: 999px;
+        background: #ffd166;
+        box-shadow: 8px 0 0 #ffd166;
+        content: "";
+      }
+
+      .brand-glyph::after {
+        position: absolute;
+        right: -5px;
+        bottom: -5px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--teal);
+        content: "";
       }
 
       .brand-text {
@@ -751,7 +784,7 @@
     <header class="site-header">
       <nav class="page-shell nav" aria-label="主导航">
         <a class="brand" href="#top" aria-label="返回顶部">
-          <span class="brand-mark">COM</span>
+          <span class="brand-mark" aria-hidden="true"><span class="brand-glyph"></span></span>
           <span class="brand-text">
             <strong>串口管理工具</strong>
             <span>Serial Port Manager</span>
