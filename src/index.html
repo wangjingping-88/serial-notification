@@ -75,7 +75,10 @@
         <aside class="panel event-panel">
           <div class="panel-heading">
             <h2>最近事件</h2>
-            <button id="clearEventsButton" class="quiet-button" type="button" disabled>清空</button>
+            <div class="event-heading-actions">
+              <span id="eventCount" class="event-count" aria-live="polite">0 条</span>
+              <button id="clearEventsButton" class="quiet-button" type="button" disabled>清空</button>
+            </div>
           </div>
           <div id="eventsList" class="events-list"></div>
           <div id="emptyEvents" class="empty-state compact">

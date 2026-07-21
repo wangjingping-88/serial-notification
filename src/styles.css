@@ -102,6 +102,20 @@ h2 {
   background: #fff9e9;
 }
 
+.icon-button:focus-visible,
+.quiet-button:focus-visible,
+.group-add-button:focus-visible,
+.group-save-button:focus-visible,
+.group-cancel-button:focus-visible,
+.mini-icon-button:focus-visible,
+.group-tab:focus-visible,
+.edit-icon-button:focus-visible,
+.color-swatch:focus-visible {
+  border-color: var(--teal);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(19, 138, 138, 0.14);
+}
+
 .icon-button:disabled {
   opacity: 0.55;
   cursor: wait;
@@ -180,6 +194,10 @@ h2 {
 
 .status-pill {
   min-width: 62px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 5px 10px;
   border: 1px solid rgba(31, 157, 85, 0.2);
   border-radius: 999px;
@@ -188,6 +206,16 @@ h2 {
   font-size: 12px;
   font-weight: 800;
   text-align: center;
+}
+
+.status-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--signal);
+  box-shadow: 0 0 0 3px rgba(31, 157, 85, 0.12);
 }
 
 .port-tools {
@@ -261,6 +289,21 @@ h2 {
 .quiet-button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.event-heading-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-count {
+  min-width: 32px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .ports-workspace {
@@ -798,6 +841,14 @@ h2 {
   border-radius: 8px;
   background: #fffaf0;
   animation: list-enter 180ms ease both;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.port-card:hover,
+.port-card:focus-within {
+  border-color: color-mix(in srgb, var(--group-color, var(--teal)) 42%, #d8cfba);
+  background: #fffdf7;
+  box-shadow: 0 7px 18px rgba(32, 33, 31, 0.07);
 }
 
 .port-card[draggable="true"] {
@@ -1224,10 +1275,15 @@ h2 {
   .scan-ring,
   .port-card,
   .event-item,
+  .group-context-menu,
   .confirm-backdrop,
   .confirm-dialog,
   .app-tooltip {
     animation: none;
+  }
+
+  .port-card {
+    transition: none;
   }
 }
 

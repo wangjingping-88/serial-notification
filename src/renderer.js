@@ -38,6 +38,7 @@ const elements = {
   emptyEvents: document.querySelector('#emptyEvents'),
   portSearchInput: document.querySelector('#portSearchInput'),
   portSearchMeta: document.querySelector('#portSearchMeta'),
+  eventCount: document.querySelector('#eventCount'),
   clearEventsButton: document.querySelector('#clearEventsButton'),
   scanStatus: document.querySelector('#scanStatus'),
   refreshButton: document.querySelector('#refreshButton'),
@@ -225,6 +226,7 @@ function renderSummary() {
   elements.portCount.textContent = state.ports.length;
   elements.aliasCount.textContent = state.ports.filter((port) => port.alias).length;
   elements.updatedAt.textContent = formatTime(state.updatedAt);
+  elements.eventCount.textContent = `${state.events.length} 条`;
   renderSearchMeta();
 }
 
@@ -336,9 +338,19 @@ function createGroupChip(group) {
   const item = document.createElement('div');
   item.className = `group-tab custom-tab${state.activeGroupId === group.id ? ' is-active' : ''}`;
   item.style.setProperty('--group-color', group.color || GROUP_COLORS[0]);
+  item.role = 'button';
+  item.tabIndex = 0;
   item.draggable = true;
   item.dataset.groupId = group.id;
   item.addEventListener('click', () => switchGroupTab(group.id));
+  item.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    switchGroupTab(group.id);
+  });
   item.addEventListener('dragstart', (event) => handleGroupDragStart(event, group));
   item.addEventListener('dragover', (event) => handleGroupDragOver(event, group));
   item.addEventListener('dragleave', handleGroupDragLeave);
@@ -1226,6 +1238,21 @@ elements.portSearchInput.addEventListener('input', () => {
   renderSearchMeta();
   renderPorts();
 });
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+    event.preventDefault();
+    elements.portSearchInput.focus();
+    elements.portSearchInput.select();
+  }
+
+  if (event.key === 'Escape' && document.activeElement === elements.portSearchInput && state.searchQuery) {
+    elements.portSearchInput.value = '';
+    state.searchQuery = '';
+    updateVisibility();
+    renderSearchMeta();
+    renderPorts();
+  }
+});
 elements.groupsBar.addEventListener('scroll', () => {
   closeGroupContextMenu();
   updateGroupScrollState();
@@ -1295,6 +1322,7 @@ window.serialApi.onSnapshot(receiveSnapshot);
 window.serialApi.onPortEvent((event) => {
   state.events = [event, ...state.events].slice(0, EVENT_HISTORY_LIMIT);
   state.eventSignature = createEventSignature(state.events);
+  elements.eventCount.textContent = `${state.events.length} 条`;
   updateVisibility();
   renderEvents({ animateLatest: true });
 });
