@@ -18,11 +18,14 @@ const { registerSerialIpcHandlers, registerWindowIpcHandlers } = require('./main
 const { queryFastPortNames, querySerialPorts } = require('./main/serial-scanner');
 const { sortPorts } = require('./main/serial-utils');
 const { createTrayMenuTemplate } = require('./main/tray-menu');
+const { createTrayTooltip } = require('./main/tray-tooltip');
 const { getCloseResponseAction, showWindowIfAvailable } = require('./main/window-lifecycle');
 
 const FAST_POLL_INTERVAL_MS = 500;
 const FULL_REFRESH_INTERVAL_MS = 5000;
 const REMOVAL_CONFIRM_POLLS = 2;
+const DEFAULT_WINDOW_WIDTH = 1180;
+const DEFAULT_WINDOW_HEIGHT = 760;
 const ICON_PATH = path.join(__dirname, '..', 'assets', 'app.ico');
 
 let mainWindow;
@@ -218,6 +221,8 @@ function addEvent(type, port) {
     return;
   }
 
+  updateTrayTooltip();
+
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('serial:event', event);
   }
@@ -369,10 +374,10 @@ function startPolling() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 920,
-    minHeight: 560,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
+    minWidth: DEFAULT_WINDOW_WIDTH,
+    minHeight: DEFAULT_WINDOW_HEIGHT,
     title: '串口管理工具',
     backgroundColor: '#f5f1e7',
     icon: ICON_PATH,
@@ -431,13 +436,21 @@ async function promptCloseAction() {
 
 function createTray() {
   tray = new Tray(createTrayImage());
-  tray.setToolTip('串口管理工具');
+  updateTrayTooltip();
   tray.setContextMenu(Menu.buildFromTemplate(createTrayMenuTemplate({
     showWindow,
     refresh: () => refreshPorts({ notifyDiff: false }),
     quit: quitApp
   })));
   tray.on('click', showWindow);
+}
+
+function updateTrayTooltip() {
+  if (!tray) {
+    return;
+  }
+
+  tray.setToolTip(createTrayTooltip(eventHistory.events));
 }
 
 function quitApp() {
@@ -580,6 +593,7 @@ function saveOrderHandler(groupId, portKeys) {
 
 function clearEventsHandler() {
   clearEventHistory(eventHistory);
+  updateTrayTooltip();
   sendSnapshot();
   return createSnapshot();
 }
