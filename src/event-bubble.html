@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>串口事件</title>
+    <link rel="stylesheet" href="./event-bubble.css" />
+  </head>
+  <body>
+    <main class="event-bubble" id="eventBubble">
+      <span id="eventMark" class="event-mark attached">+</span>
+      <section class="event-body">
+        <div class="event-heading">
+          <strong id="eventTitle">串口已插入</strong>
+          <time id="eventTime">--:--:--</time>
+        </div>
+        <span id="eventLabel" class="event-label">COM?</span>
+        <span id="eventDetail" class="event-detail">串口状态已更新</span>
+        <span id="eventSummary" class="event-summary" hidden></span>
+      </section>
+      <button id="closeBubble" class="close-button" type="button" aria-label="关闭提示" title="关闭">×</button>
+    </main>
+    <script src="./event-bubble-renderer.js"></script>
+  </body>
+</html>

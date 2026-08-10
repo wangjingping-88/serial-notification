@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Notification, Tray, ipcMain, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, dialog, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { loadJsonFile, saveJsonFileAtomic } = require('./main/atomic-json-store');
@@ -12,8 +12,8 @@ const {
   normalizeGroupName,
   normalizeGroupStore
 } = require('./main/config-schema');
-const { buildNotificationBody, buildNotificationTitle } = require('./main/notification-content');
 const { DEFAULT_EVENT_DEDUPE_MS, DEFAULT_EVENT_LIMIT, addPortEvent, clearEventHistory, createEventHistory } = require('./main/port-event-history');
+const { createEventBubbleContent } = require('./main/event-bubble-content');
 const { registerSerialIpcHandlers, registerWindowIpcHandlers } = require('./main/serial-ipc');
 const { queryFastPortNames, querySerialPorts } = require('./main/serial-scanner');
 const { sortPorts } = require('./main/serial-utils');
@@ -26,22 +26,30 @@ const FULL_REFRESH_INTERVAL_MS = 5000;
 const REMOVAL_CONFIRM_POLLS = 2;
 const DEFAULT_WINDOW_WIDTH = 1180;
 const DEFAULT_WINDOW_HEIGHT = 760;
+const EVENT_BUBBLE_WIDTH = 364;
+const EVENT_BUBBLE_HEIGHT = 124;
+const EVENT_BUBBLE_MARGIN = 16;
+const EVENT_BUBBLE_COALESCE_MS = 180;
+const EVENT_BUBBLE_DISMISS_MS = 5000;
 const ICON_PATH = path.join(__dirname, '..', 'assets', 'app.ico');
 
 let mainWindow;
 let tray;
+let eventBubbleWindow;
 let aliases = {};
 let groupStore = createEmptyGroupStore();
 let ports = [];
 let eventHistory = createEventHistory({ limit: DEFAULT_EVENT_LIMIT, dedupeMs: DEFAULT_EVENT_DEDUPE_MS });
 let portInfoCache = new Map();
-let activeNotifications = new Map();
+let pendingBubbleEvents = [];
 let fastKnownPortNames = new Set();
 let missingPortCounts = new Map();
 let presenceInitialized = false;
-let isReadyForNotifications = false;
+let isReadyForEventBubbles = false;
 let fastPollTimer;
 let fullRefreshTimer;
+let bubbleBatchTimer;
+let bubbleDismissTimer;
 let queryInFlight = false;
 let fastQueryInFlight = false;
 
@@ -176,7 +184,7 @@ function sendSnapshot() {
   }
 }
 
-function shouldShowSystemNotification() {
+function shouldShowBackgroundBubble() {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return true;
   }
@@ -184,30 +192,114 @@ function shouldShowSystemNotification() {
   return !mainWindow.isVisible() || !mainWindow.isFocused();
 }
 
-function showPortNotification(type, event, port) {
-  if (!isReadyForNotifications || !shouldShowSystemNotification() || !Notification.isSupported()) {
+function createEventBubbleWindow() {
+  if (eventBubbleWindow && !eventBubbleWindow.isDestroyed()) {
+    return eventBubbleWindow;
+  }
+
+  eventBubbleWindow = new BrowserWindow({
+    width: EVENT_BUBBLE_WIDTH,
+    height: EVENT_BUBBLE_HEIGHT,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    title: '串口事件',
+    webPreferences: {
+      preload: path.join(__dirname, 'event-bubble-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  eventBubbleWindow.setAlwaysOnTop(true, 'floating');
+  eventBubbleWindow.loadFile(path.join(__dirname, 'event-bubble.html'));
+  eventBubbleWindow.on('closed', () => {
+    eventBubbleWindow = null;
+  });
+
+  return eventBubbleWindow;
+}
+
+function positionEventBubble(window) {
+  const cursorPoint = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(cursorPoint);
+  const { x, y, width, height } = display.workArea;
+  window.setPosition(
+    x + width - EVENT_BUBBLE_WIDTH - EVENT_BUBBLE_MARGIN,
+    y + height - EVENT_BUBBLE_HEIGHT - EVENT_BUBBLE_MARGIN,
+    false
+  );
+}
+
+function clearEventBubbleTimers({ clearBatch = false } = {}) {
+  clearTimeout(bubbleDismissTimer);
+  bubbleDismissTimer = undefined;
+  if (clearBatch) {
+    clearTimeout(bubbleBatchTimer);
+    bubbleBatchTimer = undefined;
+    pendingBubbleEvents = [];
+  }
+}
+
+function hideEventBubble({ clearPending = true } = {}) {
+  clearEventBubbleTimers({ clearBatch: clearPending });
+  if (eventBubbleWindow && !eventBubbleWindow.isDestroyed()) {
+    eventBubbleWindow.hide();
+  }
+}
+
+function showEventBubble(content) {
+  const bubbleWindow = createEventBubbleWindow();
+  positionEventBubble(bubbleWindow);
+
+  const render = () => {
+    if (!eventBubbleWindow || eventBubbleWindow.isDestroyed()) {
+      return;
+    }
+
+    eventBubbleWindow.webContents.send('event-bubble:update', content);
+    eventBubbleWindow.showInactive();
+  };
+
+  if (bubbleWindow.webContents.isLoading()) {
+    bubbleWindow.webContents.once('did-finish-load', render);
+  } else {
+    render();
+  }
+
+  clearEventBubbleTimers();
+  bubbleDismissTimer = setTimeout(() => hideEventBubble(), EVENT_BUBBLE_DISMISS_MS);
+}
+
+function flushEventBubbleQueue() {
+  bubbleBatchTimer = undefined;
+  const queuedEvents = pendingBubbleEvents;
+  pendingBubbleEvents = [];
+  if (!shouldShowBackgroundBubble()) {
     return;
   }
 
-  const previous = activeNotifications.get(port.portName);
-  if (previous) {
-    previous.close();
+  const content = createEventBubbleContent(queuedEvents);
+  if (content) {
+    showEventBubble(content);
+  }
+}
+
+function queueEventBubble(event) {
+  if (!isReadyForEventBubbles || !shouldShowBackgroundBubble()) {
+    return;
   }
 
-  const notification = new Notification({
-    title: buildNotificationTitle(type),
-    body: buildNotificationBody(event, port),
-    icon: ICON_PATH,
-    silent: false
-  });
-
-  activeNotifications.set(port.portName, notification);
-  notification.once('close', () => {
-    if (activeNotifications.get(port.portName) === notification) {
-      activeNotifications.delete(port.portName);
-    }
-  });
-  notification.show();
+  pendingBubbleEvents.push(event);
+  clearTimeout(bubbleDismissTimer);
+  bubbleDismissTimer = undefined;
+  if (!bubbleBatchTimer) {
+    bubbleBatchTimer = setTimeout(flushEventBubbleQueue, EVENT_BUBBLE_COALESCE_MS);
+  }
 }
 
 function addEvent(type, port) {
@@ -227,7 +319,7 @@ function addEvent(type, port) {
     mainWindow.webContents.send('serial:event', event);
   }
 
-  showPortNotification(type, event, port);
+  queueEventBubble(event);
 }
 
 async function refreshFastPortNames() {
@@ -396,6 +488,8 @@ function createWindow() {
     mainWindow.hide();
   });
 
+  mainWindow.on('focus', () => hideEventBubble());
+
   mainWindow.on('close', (event) => {
     if (app.isQuitting) {
       return;
@@ -415,7 +509,7 @@ async function promptCloseAction() {
     type: 'question',
     title: '关闭窗口',
     message: '要退出程序，还是最小化到托盘继续监听？',
-    detail: '最小化到托盘后，只有后台检测到串口插拔时才会弹出系统通知。',
+    detail: '最小化到托盘后，后台检测到串口插拔时会显示应用内气泡提示。',
     buttons: ['最小化到托盘', '退出程序', '取消'],
     defaultId: 0,
     cancelId: 2,
@@ -459,6 +553,7 @@ function quitApp() {
 }
 
 function showWindow() {
+  hideEventBubble();
   showWindowIfAvailable(mainWindow);
 }
 
@@ -613,6 +708,14 @@ registerWindowIpcHandlers(ipcMain, {
   showWindow,
   minimizeToTray
 });
+ipcMain.handle('event-bubble:show-main-window', () => {
+  showWindow();
+  return true;
+});
+ipcMain.handle('event-bubble:hide', () => {
+  hideEventBubble();
+  return true;
+});
 
 app.whenReady().then(async () => {
   app.setAppUserModelId('SerialManager.PortWatcher');
@@ -628,7 +731,7 @@ app.whenReady().then(async () => {
     sendSnapshot();
   }
   await refreshPorts({ notifyDiff: false });
-  isReadyForNotifications = true;
+  isReadyForEventBubbles = true;
   startPolling();
 });
 
@@ -638,7 +741,8 @@ app.on('before-quit', () => {
   app.isQuitting = true;
   clearInterval(fastPollTimer);
   clearInterval(fullRefreshTimer);
-  for (const notification of activeNotifications.values()) {
-    notification.close();
+  hideEventBubble();
+  if (eventBubbleWindow && !eventBubbleWindow.isDestroyed()) {
+    eventBubbleWindow.destroy();
   }
 });

@@ -7,7 +7,7 @@
   "author": "UCCHIP",
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/shared/port-filter.js && node --check src/main/atomic-json-store.js && node --check src/main/config-schema.js && node --check src/main/notification-content.js && node --check src/main/port-event-history.js && node --check src/main/serial-ipc.js && node --check src/main/serial-scanner.js && node --check src/main/serial-utils.js && node --check src/main/tray-menu.js && node --check src/main/window-lifecycle.js && node --check tools/capture-layout.js && node --check tools/layout-preload.js",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/event-bubble-preload.js && node --check src/event-bubble-renderer.js && node --check src/shared/port-filter.js && node --check src/main/atomic-json-store.js && node --check src/main/config-schema.js && node --check src/main/event-bubble-content.js && node --check src/main/notification-content.js && node --check src/main/port-event-history.js && node --check src/main/serial-ipc.js && node --check src/main/serial-scanner.js && node --check src/main/serial-utils.js && node --check src/main/tray-menu.js && node --check src/main/window-lifecycle.js && node --check tools/capture-layout.js && node --check tools/layout-preload.js",
     "test": "node --test tests/*.test.js",
     "check:layout": "electron tools/capture-layout.js",
     "icon": "node tools/generate-icon.js",
